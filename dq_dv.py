@@ -54,7 +54,7 @@ class dqdv:
   def initialize_chargeflags(self):
     change_point = self.find_changepoint()
     self.dataframe['Charge'] = 0
-    self.dataframe.loc[:change_point, 'Charge'] = 1
+    self.dataframe.loc[:(change_point-1), 'Charge'] = 1
   
   # 새로운 dataframe 만들기
   def make_newdf(self):
@@ -82,13 +82,55 @@ class dqdv:
     if not os.path.exists(output_directory):
       os.makedirs(output_directory)
     file_path = os.path.join(output_directory, 'charge_discharge.csv')
-    
     to_save_file = self.seperated_df
     to_save_file.to_csv(file_path, index=True)
     
   # 해야될 거리
   # 1. sample dq dv 그래프 그리기 --> linespacing에 따라서 그림 여러 개 뽑아 놓기
-  # def check_dqdv(self):
-  #   self.seperated_df[:][:3] 
+  def check_dqdv(self, save_path='dqdv_sample.png'):
+    charge_df = self.seperated_df.iloc[:, :3]
+    discharge_df = self.seperated_df.iloc[:, 3:]
+    
+    charge_df = charge_df.sort_values(by='Voltage[V](charge)')
+    discharge_df = discharge_df.sort_values(by='Voltage[V](discharge)')
+    
+    charge_df = charge_df.drop_duplicates(subset='Voltage[V](charge)')
+    discharge_df = discharge_df.drop_duplicates(subset='Voltage[V](discharge)')
+    # list로 만들기
+    charge_voltage = charge_df['Voltage[V](charge)'].tolist()
+    charge_capacity = charge_df['Capacity[mAh/g](charge)'].tolist()
+    
+    discharge_voltage = discharge_df['Voltage[V](discharge)'].tolist()
+    discharge_capacity = discharge_df['Capacity[mAh/g](discharge)'].tolist()
+    
+    valid_indices = ~np.isnan(discharge_voltage)
+    discharge_voltage = np.array(discharge_voltage)[valid_indices]
+    discharge_capacity = np.array(discharge_capacity)[valid_indices]
+    
+    # cubic spline interpolation: voltage & capacity 
+    # 첫번째 voltage, capacity 빈공간이 너무 많으니 많이 채워서 만들어 주기
+    spl_charge = CubicSpline(charge_voltage, charge_capacity)
+    voltage_lin = np.linspace(min(charge_voltage), max(charge_voltage), 150)
+    capacity_lin = spl_charge(voltage_lin)
+
+    spl_discharge = CubicSpline(discharge_voltage, discharge_capacity)
+    voltage_dc_lin = np.linspace(min(discharge_voltage), max(discharge_voltage), 150)
+    capacity_dc_lin = spl_discharge(voltage_dc_lin)
+    
+    
+    # 두번째 채워진 voltage capacity 그래프를 통해서 미분을 시행함
+    spl_charge2 = CubicSpline(voltage_lin, capacity_lin)
+    derivative_charge = spl_charge2.derivative(nu=1)
+    
+    spl_discharge2 = CubicSpline(voltage_dc_lin, capacity_dc_lin)
+    derivative_discharge = spl_discharge2.derivative(nu=1)
+    
+    plt.scatter(voltage_lin, derivative_charge(voltage_lin), color='orange')
+    plt.scatter(voltage_dc_lin, derivative_discharge(voltage_lin), color='red')
+    plt.axhline(y=0, color='gray', linewidth=3)
+    plt.ylabel('dq/dv')
+    plt.xlabel('voltage')
+    plt.savefig(save_path)
+    return plt.show()
   # 2. capacity voltage 그림 그리고 뽑아 놓기 --> 이쁘게
   # 3. capacity voltage 그림에서 추가적으로 데이터 샘플링 해 놓기
