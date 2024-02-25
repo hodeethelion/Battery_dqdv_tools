@@ -128,11 +128,17 @@ class dqdv:
     spl_discharge2 = CubicSpline(voltage_dc_lin, capacity_dc_lin)
     derivative_discharge = spl_discharge2.derivative(nu=1)
     
-    plt.scatter(voltage_lin, derivative_charge(voltage_lin), color='orange')
-    plt.scatter(voltage_dc_lin, derivative_discharge(voltage_lin), color='red')
+    
+    ############################################################
+    ################### plotting part ##########################
+    ############################################################
+    
+    fig, ax = plt.subplots()
+    ax.scatter(voltage_lin, derivative_charge(voltage_lin), color='orange')
+    ax.scatter(voltage_dc_lin, derivative_discharge(voltage_lin), color='red')
     plt.axhline(y=0, color='gray', linewidth=3)
-    plt.ylabel('dq/dv')
-    plt.xlabel('voltage')
+    ax.set_ylabel('dq/dv')
+    ax.set_xlabel('voltage')
     
     # save_path=f'./output/dqdv/dqdv_{str(slice_number)}.png'
     
