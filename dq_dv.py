@@ -29,17 +29,18 @@ class dqdv:
     return f"Data from {self.dataname} excel file"
   
   # 주어진 그래프로 Q V 예시 그림 확인하기
-  def check_galvano_profile(self, save_path='galvano_sample.png'):
+  def check_galvano_profile(self, save_path='./output/galvano_sample.png'):
     '''갈바노 스태틱 샘플 그래프
     return: plotting graph & savefigure
     '''
     q_ah = self.dataframe['Capacity(mAh/g)']
     voltage = self.dataframe.iloc[:, 2]
-    plt.scatter(q_ah, voltage, marker='o', color='blue', s=8)
-    plt.xlabel('Capacity(mAh/g)');plt.ylabel('Voltage(V)')
-    plt.title('Galvano profile')
-    plt.savefig(save_path)
-    return plt.show()
+    fig, ax = plt.subplots()
+    ax.scatter(q_ah, voltage, marker='o', color='blue', s=8)
+    ax.set_xlabel('Capacity(mAh/g)');ax.set_ylabel('Voltage(V)')
+    ax.set_title('Galvano profile')
+    fig.savefig(save_path)
+    return 
   
   # dataframe이 어디서 야무지게 잘리는 지 판별
   def find_changepoint(self, threshold=100):
@@ -87,7 +88,8 @@ class dqdv:
     
   # 해야될 거리
   # 1. sample dq dv 그래프 그리기 --> linespacing에 따라서 그림 여러 개 뽑아 놓기
-  def check_dqdv(self, save_path='dqdv_sample.png'):
+  def check_dqdv(self, slice_number=150):
+    ############################## data refining ##############################
     charge_df = self.seperated_df.iloc[:, :3]
     discharge_df = self.seperated_df.iloc[:, 3:]
     
@@ -96,7 +98,7 @@ class dqdv:
     
     charge_df = charge_df.drop_duplicates(subset='Voltage[V](charge)')
     discharge_df = discharge_df.drop_duplicates(subset='Voltage[V](discharge)')
-    # list로 만들기
+    
     charge_voltage = charge_df['Voltage[V](charge)'].tolist()
     charge_capacity = charge_df['Capacity[mAh/g](charge)'].tolist()
     
@@ -106,15 +108,16 @@ class dqdv:
     valid_indices = ~np.isnan(discharge_voltage)
     discharge_voltage = np.array(discharge_voltage)[valid_indices]
     discharge_capacity = np.array(discharge_capacity)[valid_indices]
+    ##########################################################################
     
     # cubic spline interpolation: voltage & capacity 
     # 첫번째 voltage, capacity 빈공간이 너무 많으니 많이 채워서 만들어 주기
     spl_charge = CubicSpline(charge_voltage, charge_capacity)
-    voltage_lin = np.linspace(min(charge_voltage), max(charge_voltage), 150)
+    voltage_lin = np.linspace(min(charge_voltage), max(charge_voltage), slice_number)
     capacity_lin = spl_charge(voltage_lin)
 
     spl_discharge = CubicSpline(discharge_voltage, discharge_capacity)
-    voltage_dc_lin = np.linspace(min(discharge_voltage), max(discharge_voltage), 150)
+    voltage_dc_lin = np.linspace(min(discharge_voltage), max(discharge_voltage), slice_number)
     capacity_dc_lin = spl_discharge(voltage_dc_lin)
     
     
@@ -130,7 +133,15 @@ class dqdv:
     plt.axhline(y=0, color='gray', linewidth=3)
     plt.ylabel('dq/dv')
     plt.xlabel('voltage')
-    plt.savefig(save_path)
-    return plt.show()
+    
+    # save_path=f'./output/dqdv/dqdv_{str(slice_number)}.png'
+    
+    dqdv_dir = 'output/dqdv'
+    
+    if not os.path.exists(dqdv_dir):
+      os.makedirs(dqdv_dir)
+    file_path = os.path.join(dqdv_dir,f'dqdv_{slice_number}.png')
+    plt.savefig(file_path)
+    return 
   # 2. capacity voltage 그림 그리고 뽑아 놓기 --> 이쁘게
   # 3. capacity voltage 그림에서 추가적으로 데이터 샘플링 해 놓기
