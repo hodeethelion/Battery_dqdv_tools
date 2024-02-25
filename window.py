@@ -14,8 +14,10 @@ def data_print(*args):
                         )
   sample_dqdv_set.save_excel()
   sample_dqdv_set.check_galvano_profile()
-  # ********************For testing********************
-  # print(user_file_name, user_sheet_name)
+  sample_dqdv_set.check_dqdv()
+  for sl_n in [100,125,150,175,200,225,250,275,300]:
+    sample_dqdv_set.check_dqdv(slice_number=sl_n)
+  
 
 # 처음 windo 잡아 놓기
 root = Tk()
